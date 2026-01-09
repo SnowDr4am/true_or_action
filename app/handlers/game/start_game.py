@@ -51,7 +51,11 @@ async def handle_confirm_start(callback: CallbackQuery):
 
     room_id = int(callback.data.split(":")[-1])
 
-    await RoomService.start_game(room_id=room_id, by_user_id=callback.from_user.id)
+    try:
+        await RoomService.start_game(room_id=room_id, by_user_id=callback.from_user.id)
+    except ValueError:
+        await GameService.send_turn_prompt(callback.bot, room_id)
+        return
 
     await GameService.broadcast(
         callback.bot,
