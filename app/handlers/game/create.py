@@ -10,15 +10,23 @@ import app.keyboards.user.start as kb
 async def handle_create_room(callback: CallbackQuery):
     await callback.answer()
 
-    room = await RoomService.create_room(owner_id=callback.from_user.id)
-    await RoomService.join_room(
-        telegram_id=callback.from_user.id,
-        room_id=room.id
-    )
     user = await UserService.get_user(
         telegram_id=callback.from_user.id,
         with_room=True
     )
+
+    if user and getattr(user, "room", None):
+        room = user.room
+    else:
+        room = await RoomService.create_room(owner_id=callback.from_user.id)
+        await RoomService.join_room(
+            telegram_id=callback.from_user.id,
+            room_id=room.id
+        )
+        user = await UserService.get_user(
+            telegram_id=callback.from_user.id,
+            with_room=True
+        )
 
     room_block = ""
     if getattr(user, "room", None):
