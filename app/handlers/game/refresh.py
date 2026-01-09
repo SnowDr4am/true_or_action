@@ -34,10 +34,13 @@ async def handle_create_room(callback: CallbackQuery):
             "━━━━━━━━━━━━━━━"
         )
 
-    await callback.message.edit_text(
-        "<b>Играем в «Правду или Действие»</b>\n\n"
-        "<i>Без скуки, неловких пауз и лишних правил</i>"
-        f"{room_block}",
-        parse_mode="HTML",
-        reply_markup=kb.generate_start_menu(user),
-    )
+    try:
+        await callback.message.edit_text(
+            "<b>Играем в «Правду или Действие»</b>\n\n"
+            "<i>Без скуки, неловких пауз и лишних правил</i>"
+            f"{room_block}",
+            parse_mode="HTML",
+            reply_markup=kb.generate_start_menu(user),
+        )
+    except Exception:
+        pass
