@@ -18,8 +18,6 @@ class Room(Base):
     owner_id = Column(BigInteger, nullable=False)
     status = Column(Enum(RoomStatus), nullable=False, default=RoomStatus.WAITING)
 
-    current_truth_number = Column(Integer, nullable=False, default=1)
-    current_action_number = Column(Integer, nullable=False, default=1)
     players_count = Column(Integer, nullable=False, default=0)
 
     current_turn_number = Column(Integer, nullable=False, default=1)

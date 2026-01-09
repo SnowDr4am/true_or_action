@@ -92,8 +92,6 @@ class RoomService:
             entity = Room(
                 owner_id=owner_id,
                 status=RoomStatus.WAITING,
-                current_truth_number=1,
-                current_action_number=1,
                 players_count=0,
                 invite_code=uuid4().hex[:16]
             )

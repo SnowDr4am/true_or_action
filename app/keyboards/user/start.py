@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.database.models import User
-from ..general import delete_message_keyboard
+from ..general import delete_message_keyboard, generate_simple_keyboard
 
 
 def generate_start_menu(user: User) -> InlineKeyboardMarkup:

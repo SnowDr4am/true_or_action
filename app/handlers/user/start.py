@@ -1,5 +1,6 @@
+from aiogram import F
 from aiogram.filters import CommandStart, CommandObject
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 
 from ..main import user_router
 import app.keyboards.user.start as kb
@@ -29,7 +30,7 @@ async def handle_start_payload(message: Message, payload: str, user: User):
             return await invalid()
 
         if user.room_id == room.id:
-            return await cmd_start(message)
+            return
 
         if user.room_id is not None and user.room_id != room.id:
             old_room_id = user.room_id
@@ -150,6 +151,64 @@ async def cmd_start(message: Message):
         )
 
     await message.answer(
+        "<b>Играем в «Правду или Действие»</b>\n\n"
+        "<i>Без скуки, неловких пауз и лишних правил</i>"
+        f"{room_block}",
+        parse_mode="HTML",
+        reply_markup=kb.generate_start_menu(user)
+    )
+
+
+@user_router.callback_query(F.data == "cmd_start")
+async def handle_cmd_start(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
+    user = await UserService.get_user(
+        telegram_id=callback.from_user.id,
+        with_room=True
+    )
+    if not user:
+        await UserService.save_or_update(
+            telegram_id=callback.from_user.id,
+            username=callback.from_user.username,
+        )
+        user = await UserService.get_user(
+            telegram_id=callback.from_user.id,
+            with_room=True
+        )
+    else:
+        if callback.from_user.username and callback.from_user.username != user.username:
+            await UserService.save_or_update(
+                telegram_id=callback.from_user.id,
+                username=callback.from_user.username,
+            )
+
+    room_block = ""
+    if getattr(user, "room", None):
+        room = user.room
+        count = room.players_count or 0
+
+        me = await callback.bot.get_me()
+        invite_link = f"https://t.me/{me.username}?start=room_{room.invite_code}"
+
+        room_block = (
+            "\n━━━━━━━━━━━━━━━\n\n"
+
+            "🏠 <b>Твоя комната</b>\n"
+            f"• ID: <b>#{room.id}</b>\n"
+            f"• Сейчас внутри: <b>{count}</b>\n\n"
+
+            "🔗 <b>Ссылка-приглашение</b>\n"
+            f"<code>{invite_link}</code>\n\n"
+            "<i>Скинь друзьям, чтобы они залетели в игру</i>\n\n"
+
+            "━━━━━━━━━━━━━━━"
+        )
+
+    await callback.message.answer(
         "<b>Играем в «Правду или Действие»</b>\n\n"
         "<i>Без скуки, неловких пауз и лишних правил</i>"
         f"{room_block}",
