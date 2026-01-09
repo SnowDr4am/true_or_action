@@ -2,6 +2,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from ..general import delete_message_keyboard
 
 
+def confirm_rules(room_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Запустить игру", callback_data=f"room:confirm_start:{room_id}")]
+    ])
+
+
 def choice_keyboard(room_id: int, player_id: int, turn: int, *, allow_truth: bool, allow_action: bool) -> InlineKeyboardMarkup:
     row = []
     if allow_truth:
