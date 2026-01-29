@@ -7,6 +7,7 @@ from app.database.services import RoomService
 import app.keyboards.game.game_service as kb
 from .game_service import GameService, pick_truth_by_number, pick_action_by_number
 from app.utils.states import TurnState
+from app.utils.msg_deleter import MessageDeleter
 
 
 @user_router.callback_query(F.data.startswith("room:start_game:"))
@@ -68,7 +69,7 @@ async def handle_confirm_start(callback: CallbackQuery):
     await GameService.send_turn_prompt(callback.bot, room_id)
 
 @user_router.callback_query(F.data.startswith("room:choice:"))
-async def handle_choice(callback: CallbackQuery):
+async def handle_choice(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     _, _, room_id, player_id, turn, kind = callback.data.split(":")
@@ -90,12 +91,13 @@ async def handle_choice(callback: CallbackQuery):
     except Exception:
         pass
 
-    await callback.message.answer(
+    sent = await callback.message.answer(
         f"🎯 Ты выбрал <b>{kind_ru}</b>\n\n"
         f"Выбери диапазон (тогда я рандомно выберу номер) или введи номер вручную.",
         parse_mode="HTML",
         reply_markup=kb.range_keyboard(room_id, player_id, turn, kind),
     )
+    await MessageDeleter.add_messages(state, sent.message_id)
 
 @user_router.callback_query(F.data.startswith("room:manual:"))
 async def handle_manual(callback: CallbackQuery, state: FSMContext):
@@ -116,14 +118,15 @@ async def handle_manual(callback: CallbackQuery, state: FSMContext):
     await state.set_state(TurnState.waiting_number)
     await state.update_data(room_id=room_id, player_id=player_id, turn=turn, kind=kind)
 
-    await callback.message.answer(
+    sent = await callback.message.answer(
         "✍️ Введи номер цифрой (например: <b>17</b>)",
         parse_mode="HTML",
         reply_markup=kb.delete_message_keyboard
     )
+    await MessageDeleter.add_messages(state, sent.message_id)
 
 @user_router.callback_query(F.data.startswith("room:range:"))
-async def handle_range(callback: CallbackQuery):
+async def handle_range(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     try:
@@ -150,6 +153,8 @@ async def handle_range(callback: CallbackQuery):
 
 @user_router.message(TurnState.waiting_number)
 async def handle_number_message(message: Message, state: FSMContext):
+    await MessageDeleter.add_messages(state, message.message_id)
+
     data = await state.get_data()
     room_id = int(data["room_id"])
     player_id = int(data["player_id"])
@@ -161,10 +166,16 @@ async def handle_number_message(message: Message, state: FSMContext):
 
     text = (message.text or "").strip()
     if not text.isdigit():
-        return await message.answer("Нужна цифра 🙂 Например: <b>17</b>", parse_mode="HTML")
+        sent = await message.answer("Нужна цифра 🙂 Например: <b>17</b>", parse_mode="HTML")
+        return await MessageDeleter.add_messages(state, sent.message_id)
 
     number = int(text)
-    await state.clear()
+
+    try:
+        await MessageDeleter.delete_messages(state, message.from_user.id)
+        await state.clear()
+    except Exception:
+        pass
 
     await finalize_turn(message, room_id, player_id, turn, kind, number)
 
@@ -194,7 +205,9 @@ async def finalize_turn(event, room_id: int, player_id: int, turn: int, kind: st
             text=(
                 f"✅ Твой выбор — <b>{kind_ru}</b>\n"
                 f"🔢 Номер: <b>{number}</b>\n\n"
+                
                 f"🎯 Твоё задание:\n<b>{task}</b>\n\n"
+                
                 "Как закончишь — жми кнопку ниже"
             ),
             parse_mode="HTML",
